@@ -17,16 +17,24 @@ HTTP_RESPONSE = (
 # fmt: on
 
 
-def parse_headers(headers: str):
-    fields = headers.split("\r\n")
-    fields = fields[1:]  # ignore the GET / HTTP/1.1
+def parse_header_b(header_b: bytearray):
+    return parse_header_s(header_b.decode())
+
+
+def parse_header_s(header_s: str):
     output = {}
+    fields = header_s.split("\r\n")
+    method, path, _ = fields[0].split(" ", 2)
+    output["method"] = method
+    output["path"] = path
+
+    fields = fields[1:]  # ignore the GET / HTTP/1.1
     for field in fields:
         if not field:
             continue
         key, value = field.split(":", 1)
-        key = key.lower()
-        output[key] = value
+        output[key.lower()] = value.lower()
+    # print(output)
     return output
 
 
@@ -36,44 +44,52 @@ async def handle_http_request(reader, writer):
     print(f"Ready to receive from {addr!r}")
 
     data = bytearray()
-    header = bytearray()
-    body = bytearray()
+    request_header_data = bytearray()
+    request_body_data = bytearray()
+    chunk = bytearray()
     chunk_size = 2
 
-    # core loop to get data from socket stream
+    request_header = dict()
+    request_body = str()
+
+    # Handle HTTP protocol to get request
     while True:
         chunk = await reader.read(chunk_size)
         data += chunk
 
         if b"\r\n\r\n" in data:
-            header, body_part = data.split(b"\r\n\r\n")
-            headers = parse_headers(header.decode())
+            body_part: bytearray
+            request_header_data, body_part = data.split(b"\r\n\r\n")
+            request_header = parse_header_b(request_header_data)
 
-            if "content-length" in headers:
-                body_size = int(headers["content-length"])
-                body_size = body_size
-                body += body_part
-
-                while body_size > len(body):
+            if "content-length" in request_header:
+                body_size = int(request_header["content-length"])
+                request_body_data = body_part
+                recv_size = len(request_body_data)
+                while body_size > recv_size:
                     chunk = await reader.read(chunk_size)
-                    body += chunk
+                    request_body_data += chunk
                     data += chunk
+                    recv_size += len(chunk)
 
                 assert (
-                    len(body) == body_size
+                    len(request_body_data) == body_size
                 ), "body size does not match Content-Length!"
-
+                request_body = request_body_data.decode()
                 break
             else:
                 break
 
-    print(f"Headers >")
-    print(headers)
-    print(f"Body >")
-    print(body)
+    print(f"Request Headers >")
+    print(request_header)
+    print(f"Request Body >")
+    print(request_body)
+
+    # HTTP handlers
+    # response = handle_request(request_header, request_body)
 
     # print(f"Received {data}")
-    message = {"name": "sample", "time": 11111.0, "day": 111}
+    message = {"name": "sample", "time": 11111.0, "day": 111, "addr": addr}
     message = json.dumps(message)
 
     HTTP_RESPONSE = (
@@ -89,6 +105,7 @@ async def handle_http_request(reader, writer):
     writer.write(HTTP_RESPONSE.encode())
     await writer.drain()
 
+    # TODO: don't close if `connection: keep-alive`
     print("Close the connection")
     writer.close()
     await writer.wait_closed()
