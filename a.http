@@ -1,0 +1,16 @@
+@hostname = 127.0.0.1
+@port = 8888
+@host = {{hostname}}:{{port}}
+
+###
+GET http://{{host}}/topics/1 HTTP/1.1
+
+###
+
+POST http://{{host}}/comments HTTP/1.1
+content-type: application/json
+
+{
+    "name": "sample",
+    "time": "Wed, 21 Oct 2015 18:27:50 GMT"
+}
