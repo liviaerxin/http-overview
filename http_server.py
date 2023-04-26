@@ -32,38 +32,52 @@ async def handle_http_request(reader, writer):
     print(f"Ready to receive from {addr!r}")
 
     # 1. Handle request
+    while True:
+        chunk_size = 2
+        request_parsed_headers, request_body = await read_http_message(
+            reader, chunk_size
+        )
 
-    chunk_size = 2
-    request_parsed_headers, request_body = await read_http_message(reader, chunk_size)
+        print(f"Request Headers >")
+        print(request_parsed_headers)
+        print(f"Request Body >")
+        print(request_body)
 
-    print(f"Request Headers >")
-    print(request_parsed_headers)
-    print(f"Request Body >")
-    print(request_body)
+        # 2. Handle request into HTTP handlers
+        # response = handle_request(request_header, request_body)
 
-    # 2. Handle request into HTTP handlers
-    # response = handle_request(request_header, request_body)
+        # print(f"Received {data}")
 
-    # print(f"Received {data}")
+        # 3. Handle response
+        message = mock_handler(request_parsed_headers, request_body)
 
-    # 3. Handle response
-    message = mock_handler(request_parsed_headers, request_body)
+        HTTP_RESPONSE = (
+            f"HTTP/1.0 200 OK\r\n"
+            f"Access-Control-Allow-Origin: *\r\n"
+            f"Content-Type: application/json\r\n"
+            f"Server: Apache\r\n"
+            f"Client: {addr}\r\n"
+            f"Content-Length: {len(message)}\r\n"
+            f"\r\n"
+            f"{message}"
+        )
 
-    HTTP_RESPONSE = (
-        f"HTTP/1.0 200 OK\r\n"
-        f"Access-Control-Allow-Origin: *\r\n"
-        f"Content-Type: application/json\r\n"
-        f"Server: Apache\r\n"
-        f"Client: {addr}\r\n"
-        f"Content-Length: {len(message)}\r\n"
-        f"\r\n"
-        f"{message}"
-    )
+        writer.write(HTTP_RESPONSE.encode())
+        await writer.drain()
 
-    writer.write(HTTP_RESPONSE.encode())
-    await writer.drain()
+        # TODO: don't close if `connection: keep-alive`
+        if "connection" not in request_parsed_headers:
+            request_parsed_headers["connection"] = "keep-alive"
 
-    # TODO: don't close if `connection: keep-alive`
+        if request_parsed_headers["connection"] == "close":
+            break
+        elif request_parsed_headers["connection"] == "keep-alive":
+            print("Keep the connection")
+            pass
+        else:
+            print("Keep the connection")
+            pass
+
     print("Close the connection")
     writer.close()
     await writer.wait_closed()

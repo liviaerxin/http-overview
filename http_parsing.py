@@ -56,6 +56,8 @@ async def read_http_message(reader: asyncio.StreamReader, chunk_size=2):
     # Handle HTTP protocol to get request
     while True:
         chunk = await reader.read(chunk_size)
+        if chunk == b"":
+            break
         data += chunk
 
         if b"\r\n\r\n" in data:
@@ -69,6 +71,9 @@ async def read_http_message(reader: asyncio.StreamReader, chunk_size=2):
                 recv_size = len(body_data)
                 while body_size > recv_size:
                     chunk = await reader.read(chunk_size)
+                    if chunk == b"":
+                        break
+
                     body_data += chunk
                     data += chunk
                     recv_size += len(chunk)
