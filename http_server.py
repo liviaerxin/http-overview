@@ -1,41 +1,29 @@
 import asyncio
 import json
 
+from http_parsing import read_http_message
+
 # fmt: off
 HTTP_RESPONSE = (
-    f"HTTP/1.0 200 OK\r\n"
-    f"Access-Control-Allow-Origin: *\r\n"
-    f"Connection: Keep-Alive\r\n"
-    f"Content-Encoding: gzip\r\n"
-    f"Content-Type: text/html; charset=utf-8\r\n"
-    f"Keep-Alive: timeout=5, max=999\r\n"
-    f"Server: Apache\r\n"
-    f"Content-Length: 5\r\n"
-    f"\r\n"
-    f"01234"
+    b"HTTP/1.0 200 OK\r\n"
+    b"Access-Control-Allow-Origin: *\r\n"
+    b"Connection: Keep-Alive\r\n"
+    b"Content-Encoding: gzip\r\n"
+    b"Content-Type: text/html; charset=utf-8\r\n"
+    b"Keep-Alive: timeout=5, max=999\r\n"
+    b"Server: Apache\r\n"
+    b"Content-Length: 5\r\n"
+    b"\r\n"
+    b"01234"
 )
 # fmt: on
 
 
-def parse_header_b(header_b: bytearray):
-    return parse_header_s(header_b.decode())
+def mock_handler(request_header: dict, request_body: bytearray):
+    message = {"name": "sample", "time": 11111.0, "day": 111}
+    message = json.dumps(message)
 
-
-def parse_header_s(header_s: str):
-    output = {}
-    fields = header_s.split("\r\n")
-    method, path, _ = fields[0].split(" ", 2)
-    output["method"] = method
-    output["path"] = path
-
-    fields = fields[1:]  # ignore the GET / HTTP/1.1
-    for field in fields:
-        if not field:
-            continue
-        key, value = field.split(":", 1)
-        output[key.lower()] = value.lower()
-    # print(output)
-    return output
+    return message
 
 
 async def handle_http_request(reader, writer):
@@ -43,60 +31,30 @@ async def handle_http_request(reader, writer):
 
     print(f"Ready to receive from {addr!r}")
 
-    data = bytearray()
-    request_header_data = bytearray()
-    request_body_data = bytearray()
-    chunk = bytearray()
+    # 1. Handle request
+
     chunk_size = 2
-
-    request_header = dict()
-    request_body = str()
-
-    # Handle HTTP protocol to get request
-    while True:
-        chunk = await reader.read(chunk_size)
-        data += chunk
-
-        if b"\r\n\r\n" in data:
-            body_part: bytearray
-            request_header_data, body_part = data.split(b"\r\n\r\n")
-            request_header = parse_header_b(request_header_data)
-
-            if "content-length" in request_header:
-                body_size = int(request_header["content-length"])
-                request_body_data = body_part
-                recv_size = len(request_body_data)
-                while body_size > recv_size:
-                    chunk = await reader.read(chunk_size)
-                    request_body_data += chunk
-                    data += chunk
-                    recv_size += len(chunk)
-
-                assert (
-                    len(request_body_data) == body_size
-                ), "body size does not match Content-Length!"
-                request_body = request_body_data.decode()
-                break
-            else:
-                break
+    request_parsed_headers, request_body = await read_http_message(reader, chunk_size)
 
     print(f"Request Headers >")
-    print(request_header)
+    print(request_parsed_headers)
     print(f"Request Body >")
     print(request_body)
 
-    # HTTP handlers
+    # 2. Handle request into HTTP handlers
     # response = handle_request(request_header, request_body)
 
     # print(f"Received {data}")
-    message = {"name": "sample", "time": 11111.0, "day": 111, "addr": addr}
-    message = json.dumps(message)
+
+    # 3. Handle response
+    message = mock_handler(request_parsed_headers, request_body)
 
     HTTP_RESPONSE = (
         f"HTTP/1.0 200 OK\r\n"
         f"Access-Control-Allow-Origin: *\r\n"
         f"Content-Type: application/json\r\n"
         f"Server: Apache\r\n"
+        f"Client: {addr}\r\n"
         f"Content-Length: {len(message)}\r\n"
         f"\r\n"
         f"{message}"
