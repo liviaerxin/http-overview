@@ -51,7 +51,7 @@ async def http_request(url):
 
     writer.write(req.encode())
 
-    header, body = await read_http_message(reader)
+    header, body, eof = await read_http_message(reader)
 
     writer.write(req.encode())
 

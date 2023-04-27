@@ -33,10 +33,13 @@ async def handle_http_request(reader, writer):
 
     # 1. Handle request
     while True:
-        chunk_size = 2
-        request_parsed_headers, request_body = await read_http_message(
+        chunk_size = 10
+        request_parsed_headers, request_body, eof = await read_http_message(
             reader, chunk_size
         )
+
+        if not request_parsed_headers:
+            break
 
         print(f"Request Headers >")
         print(request_parsed_headers)
@@ -64,6 +67,9 @@ async def handle_http_request(reader, writer):
 
         writer.write(HTTP_RESPONSE.encode())
         await writer.drain()
+
+        if eof:
+            break
 
         # TODO: don't close if `connection: keep-alive`
         if "connection" not in request_parsed_headers:

@@ -12,6 +12,21 @@ python3 -m pytest .\test_parse_http_header.py -v -s
 python3 -m pytest .\test_read_http_from_stream.py -v -s
 ```
 
+Test connection keep alive by using socket
+
+```sh
+>>> import socket
+>>> s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+>>> s.connect(("127.0.0.1", 8888))
+>>> request_data = b"GET / HTTP/1.0\r\n" +b"Host: 127.0.0.1\r\n\r\n"
+>>> s.sendall(request_data)
+>>> s.recv(1024)
+b'HTTP/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: application/json\r\nServer: Apache\r\nClient: (\'127.0.0.1\', 61840)\r\nContent-Length: 47\r\n\r\n{"name": "sample", "time": 11111.0, "day": 111}'
+>>> s.sendall(request_data)
+>>> s.recv(1024)
+b'HTTP/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: application/json\r\nServer: Apache\r\nClient: (\'127.0.0.1\', 61840)\r\nContent-Length: 47\r\n\r\n{"name": "sample", "time": 11111.0, "day": 111}'
+```
+
 ## TODOs
 
 - [] read http body

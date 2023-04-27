@@ -52,11 +52,13 @@ async def read_http_message(reader: asyncio.StreamReader, chunk_size=2):
     chunk = bytearray()
 
     parsed_headers = dict()
+    eof = False
 
     # Handle HTTP protocol to get request
     while True:
         chunk = await reader.read(chunk_size)
-        if chunk == b"":
+        if chunk == b"":  # EOF
+            eof = True
             break
         data += chunk
 
@@ -71,7 +73,8 @@ async def read_http_message(reader: asyncio.StreamReader, chunk_size=2):
                 recv_size = len(body_data)
                 while body_size > recv_size:
                     chunk = await reader.read(chunk_size)
-                    if chunk == b"":
+                    if chunk == b"":  # EOF
+                        eof = True
                         break
 
                     body_data += chunk
@@ -88,7 +91,7 @@ async def read_http_message(reader: asyncio.StreamReader, chunk_size=2):
     # Parse body
     body = bytearray()
 
-    return parsed_headers, body_data
+    return parsed_headers, body_data, eof
 
 
 async def writer_http_message(data: bytearray, writer: asyncio.StreamWriter):
