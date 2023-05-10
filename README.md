@@ -100,3 +100,9 @@ response_data = (
 [GitHub - kbandla/dpkt: fast, simple packet creation / parsing, with definitions for the basic TCP/IP protocols](https://github.com/kbandla/dpkt)
 [GitHub - benoitc/http-parser: HTTP request/response parser for python in C](https://github.com/benoitc/http-parser/)
 [GitHub - silentsignal/netlib-offline: Raw HTTP parser for Python, based on mitmproxy's netlib](https://github.com/silentsignal/netlib-offline)
+
+## TODOs
+
+- HTTPs practices:
+
+  [How does HTTPS work?](https://blog.bytebytego.com/p/how-does-https-work-episode-6)
